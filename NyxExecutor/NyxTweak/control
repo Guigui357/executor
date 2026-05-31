@@ -1,0 +1,10 @@
+# File: NyxExecutor/NyxTweak/control
+Package: com.nyx.executor
+Name: NyxExecutor
+Depends: mobilesubstrate
+Version: 1.0
+Architecture: iphoneos-arm
+Description: Nyx Roblox serverside executor with FE bypass
+Maintainer: Nyx
+Author: Nyx
+Section: Tweaks
