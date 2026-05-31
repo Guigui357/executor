@@ -8,6 +8,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <libkern/OSCacheControl.h>
 
 typedef int (*luaL_loadstring_t)(void* L, const char* s);
 typedef int (*lua_pcall_t)(void* L, int nargs, int nresults, int errfunc);
