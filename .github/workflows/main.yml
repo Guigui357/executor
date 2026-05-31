@@ -20,7 +20,7 @@ jobs:
 
     - name: Install Theos
       run: |
-        sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos)"
+        bash -c "$(curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos)"
         echo "THEOS=/opt/theos" >> $GITHUB_ENV
 
     - name: Build Nyx Tweak
