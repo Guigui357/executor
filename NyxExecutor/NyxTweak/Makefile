@@ -11,3 +11,4 @@ NyxExecutor_CFLAGS = -fobjc-arc -std=c++17
 NyxExecutor_LDFLAGS = -ldl
 
 include $(THEOS_MAKE_PATH)/tweak.mk
+ 
