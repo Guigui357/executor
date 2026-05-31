@@ -51,7 +51,7 @@ void PatchSetThreadIdentity(uintptr_t funcAddr) {
     sys_icache_invalidate(
         (void*)funcAddr,
         sizeof(patch)
-    )
+    );
     printf("[Nyx] SetThreadIdentity patched to high identity\n");
 }
 
