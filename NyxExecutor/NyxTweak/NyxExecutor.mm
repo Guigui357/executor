@@ -48,7 +48,10 @@ void PatchSetThreadIdentity(uintptr_t funcAddr) {
     mprotect((void*)page, 0x1000, PROT_READ | PROT_WRITE | PROT_EXEC);
     uint32_t patch[] = {0x52800008, 0xD65F03C0}; // mov w0, #8; ret
     memcpy((void*)funcAddr, patch, sizeof(patch));
-    __builtin___clear_cache((char*)funcAddr, (char*)(funcAddr + sizeof(patch)));
+    sys_icache_invalidate(
+        (void*)funcAddr,
+        sizeof(patch)
+    )
     printf("[Nyx] SetThreadIdentity patched to high identity\n");
 }
 
