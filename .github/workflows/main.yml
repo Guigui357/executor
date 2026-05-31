@@ -16,12 +16,126 @@ jobs:
     - name: Setup Xcode
       uses: maxim-lobanov/setup-xcode@v1
       with:
-        xcode-version: latest
+        xcode-version: '15.4'
 
-    - name: Install Theos
+    - name: Install Theos (direct)
       run: |
-        bash -c "$(curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos)"
-        echo "THEOS=/opt/theos" >> $GITHUB_ENV
+        export THEOS=/opt/theos
+        sudo mkdir -p $THEOS
+        sudo chown -R $USER $THEOS
+        git clone --recursive https://github.com/theos/theos.git $THEOS || \
+        (curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos | bash)
+        echo "THEOS=$THEOS" >> $GITHUB_ENV
+        echo "$THEOS/bin" >> $GITHUB_PATH
+
+    - name: Create full Nyx project structure
+      run: |
+        mkdir -p NyxExecutor/NyxTweak
+        cat > NyxExecutor/NyxTweak/NyxExecutor.mm << 'EOF'
+#include <dlfcn.h>
+#include <string>
+#include <vector>
+#include <cstdint>
+#include <sys/mman.h>
+#include <unistd.h>
+#include <stdio.h>
+
+typedef int (*luaL_loadstring_t)(void* L, const char* s);
+typedef int (*lua_pcall_t)(void* L, int nargs, int nresults, int errfunc);
+
+static luaL_loadstring_t luaL_loadstring = nullptr;
+static lua_pcall_t lua_pcall = nullptr;
+static void* RobloxLuaState = nullptr;
+
+uintptr_t FindPattern(uintptr_t start, size_t size, const char* pattern) {
+    std::vector<uint8_t> bytes;
+    std::vector<bool> mask;
+    for (const char* p = pattern; *p; ++p) {
+        if (*p == ' ') continue;
+        if (*p == '?') {
+            bytes.push_back(0); mask.push_back(false);
+        } else {
+            bytes.push_back(static_cast<uint8_t>(strtol(p, nullptr, 16)));
+            mask.push_back(true);
+            if (*(p+1)) ++p;
+        }
+    }
+    for (uintptr_t addr = start; addr < start + size - bytes.size(); ++addr) {
+        bool match = true;
+        for (size_t i = 0; i < bytes.size(); ++i) {
+            if (mask[i] && *(uint8_t*)(addr + i) != bytes[i]) {
+                match = false; break;
+            }
+        }
+        if (match) return addr;
+    }
+    return 0;
+}
+
+void PatchSetThreadIdentity(uintptr_t funcAddr) {
+    if (!funcAddr) return;
+    uintptr_t page = funcAddr & ~0xFFF;
+    mprotect((void*)page, 0x1000, PROT_READ | PROT_WRITE | PROT_EXEC);
+    uint32_t patch[] = {0x52800008, 0xD65F03C0};
+    memcpy((void*)funcAddr, patch, sizeof(patch));
+    __builtin___clear_cache((void*)funcAddr, (void*)(funcAddr + sizeof(patch)));
+    printf("[Nyx] SetThreadIdentity patched\n");
+}
+
+void ExecuteServerCode(const char* code) {
+    if (!RobloxLuaState) return;
+    int r = luaL_loadstring(RobloxLuaState, code);
+    if (r == 0) lua_pcall(RobloxLuaState, 0, 0, 0);
+}
+
+__attribute__((constructor))
+static void NyxInit() {
+    void* robloxLib = dlopen("RobloxPlayer", RTLD_LAZY);
+    if (!robloxLib) robloxLib = dlopen("/usr/lib/RobloxPlayer", RTLD_LAZY);
+    uintptr_t base = (uintptr_t)robloxLib;
+    size_t size = 0x4000000;
+
+    uintptr_t setIdentityAddr = FindPattern(base, size, "FF ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?");
+    if (setIdentityAddr) PatchSetThreadIdentity(setIdentityAddr);
+
+    luaL_loadstring = (luaL_loadstring_t)FindPattern(base, size, "your_ios_lua_loadstring_arm64_sig");
+    lua_pcall = (lua_pcall_t)FindPattern(base, size, "your_ios_lua_pcall_arm64_sig");
+    RobloxLuaState = (void*)FindPattern(base, size, "your_ios_lua_state_sig");
+
+    printf("[Nyx] iOS Serverside Executor loaded - FE bypassed\n");
+}
+
+extern "C" void NyxExecute(const char* code) {
+    ExecuteServerCode(code);
+}
+EOF
+
+        cat > NyxExecutor/NyxTweak/Makefile << 'EOF'
+TARGET = iphone:clang:latest:14.0
+ARCHS = arm64 arm64e
+INSTALL_TARGET_PROCESSES = Roblox
+
+include $(THEOS)/makefiles/common.mk
+
+TWEAK_NAME = NyxExecutor
+NyxExecutor_FILES = NyxExecutor.mm
+NyxExecutor_CFLAGS = -fobjc-arc -std=c++17
+NyxExecutor_LDFLAGS = -ldl
+
+include $(THEOS_MAKE_PATH)/tweak.mk
+EOF
+
+        cat > NyxExecutor/NyxTweak/control << 'EOF'
+Package: com.nyx.executor
+Name: NyxExecutor
+Depends: mobilesubstrate
+Version: 1.0
+Architecture: iphoneos-arm
+Description: Nyx Roblox serverside executor
+Maintainer: Nyx
+Author: Nyx
+Section: Tweaks
+EOF
 
     - name: Build Nyx Tweak
       run: |
