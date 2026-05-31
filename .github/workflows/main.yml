@@ -18,8 +18,9 @@ jobs:
       with:
         xcode-version: '16.0'
 
-    - name: Install Theos
+    - name: Install Theos and ldid
       run: |
+        brew install ldid
         export THEOS=/opt/theos
         sudo mkdir -p $THEOS
         sudo chown -R $USER $THEOS
@@ -37,4 +38,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: Nyx-iOS-Executor
-        path: NyxExecutor/NyxTweak/packages/*.deb
+        path: NyxExecutor/NyxTweak/packages/*.dylib
