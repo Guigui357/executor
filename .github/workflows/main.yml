@@ -1,0 +1,35 @@
+# File: .github/workflows/ios-build.yml
+name: Nyx iOS Build
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest
+
+    - name: Install Theos
+      run: |
+        sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos)"
+        echo "THEOS=/opt/theos" >> $GITHUB_ENV
+
+    - name: Build Nyx Tweak
+      run: |
+        cd NyxExecutor/NyxTweak
+        make package
+
+    - name: Upload DEB
+      uses: actions/upload-artifact@v4
+      with:
+        name: Nyx-iOS-Executor
+        path: NyxExecutor/NyxTweak/packages/*.deb
