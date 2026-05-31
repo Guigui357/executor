@@ -1,5 +1,5 @@
-// File: NyxExecutor/NyxDylib/NyxExecutor.mm
-// .dylib version for iOS ARM64 injection
+// File: NyxExecutor/NyxTweak/NyxExecutor.mm
+// Versão corrigida - __builtin___clear_cache fix + .dylib compatível
 
 #include <dlfcn.h>
 #include <string>
@@ -45,9 +45,9 @@ void PatchSetThreadIdentity(uintptr_t funcAddr) {
     if (!funcAddr) return;
     uintptr_t page = funcAddr & ~0xFFF;
     mprotect((void*)page, 0x1000, PROT_READ | PROT_WRITE | PROT_EXEC);
-    uint32_t patch[] = {0x52800008, 0xD65F03C0};
+    uint32_t patch[] = {0x52800008, 0xD65F03C0}; // mov w0, #8; ret
     memcpy((void*)funcAddr, patch, sizeof(patch));
-    __builtin___clear_cache((void*)funcAddr, (void*)(funcAddr + sizeof(patch)));
+    __builtin___clear_cache((char*)funcAddr, (char*)(funcAddr + sizeof(patch)));
     printf("[Nyx] SetThreadIdentity patched to high identity\n");
 }
 
@@ -71,7 +71,7 @@ static void NyxInit() {
     lua_pcall = (lua_pcall_t)FindPattern(base, size, "your_ios_lua_pcall_arm64_sig");
     RobloxLuaState = (void*)FindPattern(base, size, "your_ios_lua_state_sig");
 
-    printf("[Nyx] iOS .dylib Serverside Executor loaded - FE bypassed\n");
+    printf("[Nyx] iOS Serverside Executor loaded - FE bypassed\n");
 }
 
 extern "C" __attribute__((visibility("default"))) void NyxExecute(const char* code) {
