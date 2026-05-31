@@ -38,4 +38,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: Nyx-iOS-Executor
-        path: NyxExecutor/NyxTweak/packages/*.dylib
+        path: NyxExecutor/NyxTweak/packages/*
